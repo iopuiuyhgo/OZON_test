@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -37,7 +38,7 @@ func (m *MockStorage) Store(key, value string) {
 	m.data[key] = value
 }
 
-func MockGenerator(url string, seed int) (string, error) {
+func MockGenerator(_ string, seed int) (string, error) {
 	return fmt.Sprintf("path%d", seed), nil
 }
 
@@ -51,7 +52,12 @@ func findFreePort(t *testing.T) int {
 	if err != nil {
 		t.Fatalf("failed to find free port: %v", err)
 	}
-	defer l.Close()
+	defer func(l net.Listener) {
+		err := l.Close()
+		if err != nil {
+			log.Printf("failed to close listener: %v", err)
+		}
+	}(l)
 	return l.Addr().(*net.TCPAddr).Port
 }
 

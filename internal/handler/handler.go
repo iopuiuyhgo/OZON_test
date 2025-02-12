@@ -69,7 +69,7 @@ func (h *Handlers) Close() {
 	}
 }
 
-func (h *Handlers) pageHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) pageHandler(w http.ResponseWriter, _ *http.Request) {
 	htmlPage, _ := fs.ReadFile(f, PathToHtml)
 
 	data := struct {

@@ -19,7 +19,7 @@ func NewUrlServer(generator func(url string, seed int) (string, error), storage 
 	return &UrlServer{generator: generator, storage: storage, ip: ip}
 }
 
-func (s *UrlServer) GenerateKey(ctx context.Context, req *pb.GenerateKeyRequest) (*pb.GenerateKeyResponse, error) {
+func (s *UrlServer) GenerateKey(_ context.Context, req *pb.GenerateKeyRequest) (*pb.GenerateKeyResponse, error) {
 	url := req.GetUrl()
 	if url == "" {
 		return nil, fmt.Errorf("missing URL parameter")
@@ -52,7 +52,7 @@ func (s *UrlServer) GenerateKey(ctx context.Context, req *pb.GenerateKeyRequest)
 	}, nil
 }
 
-func (s *UrlServer) Redirect(ctx context.Context, req *pb.RedirectRequest) (*pb.RedirectResponse, error) {
+func (s *UrlServer) Redirect(_ context.Context, req *pb.RedirectRequest) (*pb.RedirectResponse, error) {
 	key := req.GetKey()
 	if key == "" {
 		return nil, fmt.Errorf("missing key parameter")
