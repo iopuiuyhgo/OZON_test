@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POST Request Example</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .result { margin-top: 20px; white-space: pre-wrap; background: #f9f9f9; padding: 10px; border: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <h2>Отправить POST-запрос</h2>
+  <input type="text" id="inputField" placeholder="Введите URL" style="width: 100%; padding: 10px; margin-bottom: 10px;">
+  <button onclick="sendPostRequest()">Отправить</button>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    async function sendPostRequest() {
+      const urlInput = document.getElementById('inputField').value;
+      const resultDiv = document.getElementById('result');
+      const ip = '{{.IP}}';
+      const port = '{{.PORT}}';
+
+      try {
+        const response = await fetch(`http://${ip}:${port}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url: urlInput })
+        });
+
+        const data = await response.json();
+
+        // Если в ответе есть поле URL, делаем его кликабельной ссылкой.
+        if (data.URL) {
+          resultDiv.innerHTML = `
+            <p>${data.message}</p>
+            <p><a href="${data.URL}" target="_blank">${data.URL}</a></p>
+          `;
+        } else {
+          resultDiv.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        resultDiv.textContent = `Ошибка: ${error.message}`;
+      }
+    }
+  </script>
+</body>
+</html>

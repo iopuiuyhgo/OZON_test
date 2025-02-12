@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option go_package = "./proto;proto";
+
+package proto;
+
+service UrlService {
+  rpc GenerateKey (GenerateKeyRequest) returns (GenerateKeyResponse);
+  rpc Redirect (RedirectRequest) returns (RedirectResponse);
+}
+
+message GenerateKeyRequest {
+  string url = 1;
+}
+
+message GenerateKeyResponse {
+  string message = 1;
+  string short_url = 2;
+}
+
+message RedirectRequest {
+  string key = 1;
+}
+
+message RedirectResponse {
+  string url = 1;
+}
