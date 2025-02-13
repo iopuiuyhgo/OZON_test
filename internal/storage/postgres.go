@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"log"
+	"strconv"
 )
 
 type PostgresStringMap struct {
@@ -13,7 +14,7 @@ type PostgresStringMap struct {
 	tableName string
 }
 
-func NewPostgresStringMap(connString string, tableName string) (*PostgresStringMap, error) {
+func NewPostgresStringMap(connString string, tableName string, keyLen int) (*PostgresStringMap, error) {
 	conn, err := pgx.Connect(context.Background(), connString)
 	if err != nil {
 		return nil, err
@@ -25,7 +26,7 @@ func NewPostgresStringMap(connString string, tableName string) (*PostgresStringM
 	}
 
 	if !q {
-		err := createTable(conn, tableName)
+		err := createTable(conn, tableName, keyLen)
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +35,7 @@ func NewPostgresStringMap(connString string, tableName string) (*PostgresStringM
 	return &PostgresStringMap{conn: conn, tableName: tableName}, nil
 }
 
-func (pg *PostgresStringMap) Load(key string) (value string, ok bool) {
+func (pg *PostgresStringMap) Load(key string) (value string, err error) {
 	query := fmt.Sprintf(`
         SELECT url
         FROM "%s"
@@ -42,18 +43,18 @@ func (pg *PostgresStringMap) Load(key string) (value string, ok bool) {
     `, pg.tableName)
 
 	var url string
-	err := pg.conn.QueryRow(context.Background(), query, key).Scan(&url)
+	err = pg.conn.QueryRow(context.Background(), query, key).Scan(&url)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", false
+			return "", err
 		}
 		log.Printf("Error loading key: %v", err)
-		return "", false
+		return "", err
 	}
-	return url, true
+	return url, nil
 }
 
-func (pg *PostgresStringMap) Store(key string, value string) {
+func (pg *PostgresStringMap) Store(key string, value string) error {
 	query := fmt.Sprintf(`
         INSERT INTO "%s" (id, url)
         VALUES ($1, $2)
@@ -63,7 +64,9 @@ func (pg *PostgresStringMap) Store(key string, value string) {
 	_, err := pg.conn.Exec(context.Background(), query, key, value)
 	if err != nil {
 		log.Printf("Error storing key: %v", err)
+		return err
 	}
+	return nil
 }
 
 func (pg *PostgresStringMap) Close() error {
@@ -86,13 +89,13 @@ func checkTableExists(conn *pgx.Conn, tableName string) (bool, error) {
 	return exists, nil
 }
 
-func createTable(conn *pgx.Conn, tableName string) error {
+func createTable(conn *pgx.Conn, tableName string, keyLen int) error {
 	query := fmt.Sprintf(`
         CREATE TABLE "%s" (
-            id CHAR(10) PRIMARY KEY,
+            id CHAR(%s) PRIMARY KEY,
     		url TEXT NOT NULL
         );
-    `, tableName)
+    `, tableName, strconv.Itoa(keyLen))
 
 	_, err := conn.Exec(context.Background(), query)
 	if err != nil {

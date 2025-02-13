@@ -13,32 +13,30 @@ import (
 	"strconv"
 )
 
-func getEnv(key, defaultValue string) string {
+func getEnv[T any](key string, defaultValue T, parser func(string) (T, error)) T {
 	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return defaultValue
-}
-
-func getEnvBool(key string, defaultValue bool) bool {
-	if value, exists := os.LookupEnv(key); exists {
-		boolValue, err := strconv.ParseBool(value)
+		parsedValue, err := parser(value)
 		if err == nil {
-			return boolValue
+			return parsedValue
 		}
 	}
 	return defaultValue
 }
 
-func main() {
-	ip := getEnv("SERVER_IP", "localhost")
-	port := getEnv("SERVER_PORT", "8080")
-	inMemory := getEnvBool("USE_IN_MEMORY", true)
-	postgresPath := getEnv("POSTGRES_PATH", "")
-	tableName := getEnv("TABLE_NAME", "")
-	grpcInterface := getEnvBool("GRPC", true)
+func idString(key string) (string, error) {
+	return key, nil
+}
 
-	idGen := encoder.GenerateSecureShortId
+func main() {
+	ip := getEnv("SERVER_IP", "localhost", idString)
+	port := getEnv("SERVER_PORT", "8080", idString)
+	inMemory := getEnv("USE_IN_MEMORY", true, strconv.ParseBool)
+	postgresPath := getEnv("POSTGRES_PATH", "", idString)
+	tableName := getEnv("TABLE_NAME", "", idString)
+	grpcInterface := getEnv("GRPC", true, strconv.ParseBool)
+	keyLen := getEnv("KEY_LEN", 10, strconv.Atoi)
+
+	idGen := func(url string, seed int) (string, error) { return encoder.GenerateSecureShortId(url, seed, keyLen) }
 
 	var (
 		storageMap storage.Storage
@@ -48,7 +46,7 @@ func main() {
 	if inMemory {
 		storageMap = storage.NewSafeMap()
 	} else {
-		storageMap, err = storage.NewPostgresStringMap(postgresPath, tableName)
+		storageMap, err = storage.NewPostgresStringMap(postgresPath, tableName, keyLen)
 	}
 	if err != nil {
 		log.Println("Error: No valid storage configuration provided. Please specify either in-memory storage or a valid PostgreSQL path.")
@@ -61,17 +59,16 @@ func main() {
 		return
 	}
 	if grpcInterface {
-		if err := runServer(ip, port, storageMap); err != nil {
+		if err := runServer(ip, port, storageMap, idGen); err != nil {
 			log.Fatalf("failed to start server: %v", err)
 		}
 	} else {
-		h := handler.CreateHandlers(idGen, &storageMap, ip, port)
+		h := handler.CreateHandlers(idGen, storageMap, ip, port)
 		h.Run()
 	}
 }
 
-func runServer(ip string, port string, storage storage.Storage) error {
-	idGen := encoder.GenerateSecureShortId
+func runServer(ip string, port string, storage storage.Storage, idGen func(url string, seed int) (string, error)) error {
 	server := grpc.NewServer()
 	pb.RegisterUrlServiceServer(server, handler.NewUrlServer(idGen, &storage, ip))
 

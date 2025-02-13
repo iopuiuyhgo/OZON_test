@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -12,17 +13,18 @@ func NewSafeMap() *SafeStringMap {
 	return &SafeStringMap{m: sync.Map{}}
 }
 
-func (sm *SafeStringMap) Store(key, value string) {
+func (sm *SafeStringMap) Store(key, value string) error {
 	sm.m.Store(key, value)
+	return nil
 }
 
-func (sm *SafeStringMap) Load(key string) (string, bool) {
+func (sm *SafeStringMap) Load(key string) (string, error) {
 	if val, ok := sm.m.Load(key); ok {
 		if str, ok := val.(string); ok {
-			return str, true
+			return str, nil
 		}
 	}
-	return "", false
+	return "", errors.New("value not found")
 }
 
 func (sm *SafeStringMap) Delete(key string) {

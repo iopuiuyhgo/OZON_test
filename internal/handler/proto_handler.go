@@ -32,10 +32,13 @@ func (s *UrlServer) GenerateKey(_ context.Context, req *pb.GenerateKeyRequest) (
 			return nil, fmt.Errorf("failed to generate key: %v", err)
 		}
 
-		v, ok := (*s.storage).Load(key)
-		if !ok {
+		v, err := (*s.storage).Load(key)
+		if err != nil {
 			res = key
-			(*s.storage).Store(key, url)
+			err = (*s.storage).Store(key, url)
+			if err != nil {
+				return nil, fmt.Errorf("failed to store key: %v", err)
+			}
 			break
 		}
 		if v == url {
@@ -58,9 +61,9 @@ func (s *UrlServer) Redirect(_ context.Context, req *pb.RedirectRequest) (*pb.Re
 		return nil, fmt.Errorf("missing key parameter")
 	}
 
-	redirectURL, ok := (*s.storage).Load(key)
-	if !ok {
-		return nil, fmt.Errorf("key not found")
+	redirectURL, err := (*s.storage).Load(key)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find key %v", err)
 	}
 
 	return &pb.RedirectResponse{

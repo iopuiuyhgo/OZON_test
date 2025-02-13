@@ -24,7 +24,7 @@ const PathToHtml = "page.html"
 var ip string
 var port string
 
-func CreateHandlers(generator func(url string, seed int) (string, error), storage *storage.Storage, nip string, nport string) *Handlers {
+func CreateHandlers(generator func(url string, seed int) (string, error), storage storage.Storage, nip string, nport string) *Handlers {
 	ip = nip
 	port = nport
 
@@ -47,7 +47,7 @@ func CreateHandlers(generator func(url string, seed int) (string, error), storag
 
 type Handlers struct {
 	generator func(url string, seed int) (string, error)
-	storage   *storage.Storage
+	storage   storage.Storage
 	server    *http.Server
 }
 
@@ -91,9 +91,9 @@ func (h *Handlers) getHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirectURL, ok := (*h.storage).Load(key)
-	if !ok {
-		http.Error(w, "Key not found", http.StatusNotFound)
+	redirectURL, err := h.storage.Load(key)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Cannot found key %v", err), http.StatusNotFound)
 		return
 	}
 
@@ -140,11 +140,13 @@ func (h *Handlers) postHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		v, ok := (*h.storage).Load(key)
-		if !ok {
+		v, err := h.storage.Load(key)
+		if err != nil {
 			res = key
-			(*h.storage).Store(key, data.Url)
-
+			err = h.storage.Store(key, data.Url)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Failed to store key %v", err), http.StatusInternalServerError)
+			}
 			break
 		}
 
